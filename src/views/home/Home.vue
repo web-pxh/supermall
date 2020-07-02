@@ -37,13 +37,14 @@ import NavBar from "components/common/navbar/NavBar";
 import TabControl from "components/content/tabControl/TabControl";
 import GoodList from "components/content/goods/GoodsList";
 import Scroll from "components/common/scroll/Scroll";
-import BackTop from "components/content/backTop/BackTop";
 
 import { getHomeMultidata, getHomeGoods } from "network/home";
 import { debounce } from "common/utils";
+import { itemListenerMixin, backTopMixin } from "common/mixin";
 
 export default {
   name: "Home",
+  mixins: [itemListenerMixin, backTopMixin],
   data() {
     return {
       banners: [],
@@ -54,9 +55,8 @@ export default {
         sell: { page: 0, list: [] }
       },
       currentType: "pop",
-      isShowBackTop: false,
-      tabOffsetTop: 0,
       isTabFixed: false,
+      tabOffsetTop: 0,
       saveY: 0
     };
   },
@@ -70,7 +70,11 @@ export default {
     this.$refs.scroll.refresh();
   },
   deactivated() {
-    this.saveY = -1000;
+    //1、保存Y值
+    this.saveY = this.$refs.scroll.getScrollY();
+
+    //2、取消全局事件的监听
+    this.$bus.$off("itemImageLoad", this.itemImgListener);
   },
   created() {
     //1、请求多个数据
@@ -80,13 +84,7 @@ export default {
     this.getHomeGoods("new");
     this.getHomeGoods("sell");
   },
-  mounted() {
-    const refresh = debounce(this.$refs.scroll.refresh, 100);
-    //3、监听item图片加载完成
-    this.$bus.$on("itemImageLoad", () => {
-      refresh();
-    });
-  },
+  mounted() {},
   methods: {
     /**
      * 事件监听相关的方法
@@ -106,12 +104,9 @@ export default {
       this.$refs.tabControl1.currentIndex = index;
       this.$refs.tabControl2.currentIndex = index;
     },
-    backClick() {
-      this.$refs.scroll.scrollTo(0, 0);
-    },
     contentScroll(position) {
       //1、判断BackTop是否显示
-      this.isShowBackTop = -position.y > 1000;
+      this.listenShowBackTop(position);
 
       //2、决定tabControl是否吸顶(position:fixed)
       this.isTabFixed = -position.y > this.tabOffsetTop;
@@ -149,8 +144,7 @@ export default {
     NavBar,
     TabControl,
     GoodList,
-    Scroll,
-    BackTop
+    Scroll
   }
 };
 </script>
